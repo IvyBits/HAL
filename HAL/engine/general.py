@@ -20,8 +20,11 @@ except ImportError:
 
 class GeneralEngine(BaseEngine):
     """The substring engine, respond with all entries that is a substring of the input"""
-    def __init__(self, file=':memory:'):
+    def __init__(self, file=None):
+        if file is None:
+            file = ':memory:'
         self.db = sqlite3.connect(file, check_same_thread=False)
+        self._loaded_from_file = False
         try:
             self.db.execute('SELECT * FROM halindex LIMIT 1')
             self.db.execute('SELECT * FROM haldata LIMIT 1')
@@ -30,7 +33,13 @@ class GeneralEngine(BaseEngine):
             self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                                    data TEXT UNIQUE, resp TEXT)''')
+        else:
+            self._loaded_from_file = True
         self.db_lock = Lock()
+    
+    @property
+    def loaded_from_file(self):
+        return self._loaded_from_file
 
     def close(self):
         self.db.close()
@@ -98,7 +107,7 @@ class GeneralEngine(BaseEngine):
         data.sort(key=lambda x: x[2], reverse=True)
         return data
     
-    def output(self, text):
+    def output(self, text, context=None):
         data = self.search(text)
         out = []
         for index, resps, priority in data:
@@ -106,9 +115,9 @@ class GeneralEngine(BaseEngine):
                 out.append((resp, priority))
         return out
     
-    def final(self, text):
+    def final(self, text, context=None):
         try:
-            return random.choice(self.search(text)[0])
+            return random.choice(self.search(text)[0][1])
         except IndexError:
             # When there is no response
             return None

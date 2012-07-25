@@ -27,7 +27,12 @@ class OneWordEngine(BaseEngine):
         else:
             self.data = shelve.open(file)
         self.dbfile = file
+        self._loaded_from_file = bool(self.data)
     
+    @property
+    def loaded_from_file(self):
+        return self._loaded_from_file
+
     def __del__(self):
         self.close()
     
@@ -75,11 +80,14 @@ class OneWordEngine(BaseEngine):
                 pass
         return out
     
-    def output(self, input):
+    def output(self, input, context=None):
         return [(out, 0.001) for word, out in self.search(input)]
     
-    def final(self, input):
-        return random.choice(self.search(input))[1]
+    def final(self, input, context=None):
+        try:
+            return random.choice(self.search(input))[1]
+        except IndexError:
+            return
 
 if __name__ == '__main__':
     from pprint import pprint

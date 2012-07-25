@@ -22,9 +22,14 @@ class GenericEngine(BaseEngine):
         if file:
             with open(file) as file:
                 self.data.update(i.strip() for i in file)
+        self._loaded_from_file = file is not None
         self.file = file
         self.data = list(self.data)
     
+    @property
+    def loaded_from_file(self):
+        return self._loaded_from_file
+
     def close(self):
         if self.file is not None:
             with open(file, 'w') as file:
@@ -41,11 +46,14 @@ class GenericEngine(BaseEngine):
             for line in file:
                 self.data.append(line.strip())
     
-    def output(self, input):
+    def output(self, input, context=None):
         return map(lambda x: (x, 0.0), self.data)
     
-    def final(self, input):
-        return random.choice(self.data)
+    def final(self, input, context=None):
+        try:
+            return random.choice(self.data)
+        except IndexError:
+            return
 
 if __name__ == '__main__':
     from pprint import pprint

@@ -4,8 +4,13 @@ class BaseEngine(object):
     """Template of an engine"""
     @abstractmethod
     def __init__(self, file=None):
-        """May construct from file if needed, file should be string"""
+        """May construct from file if needed, file should be string,
+           or None if default is desired"""
         pass
+    
+    @abstractproperty
+    def loaded_from_file(self):
+        return False
     
     @abstractmethod
     def close(self):
@@ -22,15 +27,18 @@ class BaseEngine(object):
         pass
     
     @abstractmethod
-    def output(self, input):
+    def output(self, input, context=None):
         """Given input, return output in a list of
         tuple(output:str, priority:float(range(1)))"""
         pass
     
     @abstractmethod
-    def final(self, input):
+    def final(self, input, context=None):
         """Selects the highest ranked output from `output()`
         
         Implementation is allowed to randomly select from
         equally ranked outputs"""
-        return self.output[0]
+        try:
+            return self.output[0]
+        except IndexError:
+            return

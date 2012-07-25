@@ -1,5 +1,6 @@
 import re
 import sys
+import random
 try:
     import cPickle as pickle
 except ImportError:
@@ -23,19 +24,28 @@ except ImportError:
     BaseEngine = object
 
 class RegexEngine(BaseEngine):
-    def __init__(self, file=':memory:'):
+    def __init__(self, file=None):
+        if file is None:
+            file = ':memory:'
         self.db = sqlite3.connect(file, check_same_thread=False)
         # int id => regex
         self.regex = {}
+        self._loaded_from_file = False
         try:
             self.db.execute('SELECT * FROM halindex LIMIT 1')
         except sqlite3.OperationalError:
             self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
             self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
                                    regex TEXT UNIQUE, resp TEXT)''')
+        else:
+            self._loaded_from_file = True
         self.db_lock = Lock()
         self._gen_regex()
-
+    
+    @property
+    def loaded_from_file(self):
+        return self._loaded_from_file
+    
     def _gen_regex(self):
         with self.db_lock:
             sql = 'SELECT rowid, regex FROM haldata'
@@ -133,14 +143,17 @@ class RegexEngine(BaseEngine):
         out.sort(key=lambda x: x[2], reverse=True)
         return out
     
-    def output(self, input):
+    def output(self, input, context=None):
         out = []
         for match, resps, diff in self.search(input):
             for resp in resps:
                 out.append((resp, diff))
     
-    def final(self, input):
-        return random.choice(self.search(input)[0][2])
+    def final(self, input, context=None):
+        try:
+            return random.choice(self.search(input)[0][1])
+        except IndexError:
+            return
 
 if __name__ == '__main__':
     from pprint import pprint
