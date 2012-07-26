@@ -1,11 +1,15 @@
 import os
 import re
 import random
+import warnings
 from difflib import SequenceMatcher
 from threading import Lock
 from contextlib import closing
 
-from pysqlite2 import dbapi2 as sqlite3
+try:
+    from pysqlite2 import dbapi2 as sqlite3
+except ImportError:
+    import sqlite3 # doubt the vanilla one has fts
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -25,11 +29,32 @@ class GeneralEngine(BaseEngine):
             file = ':memory:'
         self.db = sqlite3.connect(file, check_same_thread=False)
         self._loaded_from_file = False
+        self.no_fts = False
         try:
             self.db.execute('SELECT * FROM halindex LIMIT 1')
-            self.db.execute('SELECT * FROM haldata LIMIT 1')
-        except sqlite3.OperationalError:
-            self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in e.args[0]:
+                raise
+            try:
+                self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
+            except sqlite3.OperationalError as e:
+                if 'no such module' not in e.args[0]:
+                    raise
+                # try fts3 instead
+                try:
+                    self.db.execute('CREATE VIRTUAL TABLE halindex USING fts3(data)')
+                except sqlite3.OperationalError as e:
+                    if 'no such module' in e.args[0]:
+                        #raise ImportError('You need a version of sqlite that supports full text search')
+                        self.no_fts = True
+                        warnings.warn('Huge performance penalty expected '
+                                      'without full text search support '
+                                      'in sqlite')
+                        self.db.execute('''CREATE TABLE halindex (
+                                               docid INTEGER,
+                                               data TEXT)''')
+                    else:
+                        raise
             self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                                    data TEXT UNIQUE, resp TEXT)''')
@@ -81,13 +106,27 @@ class GeneralEngine(BaseEngine):
     
     def _search_db(self, text):
         """Format: list of (index text, resp \f separated text)"""
-        text = ' OR '.join(strip_clean(text).split())
-        with self.db_lock:
-            c = self.db.execute('''SELECT idx.data, data.resp
-                                   FROM haldata data, halindex idx
-                                   WHERE idx.data MATCH ?
-                                   AND data.id == idx.docid''', (text,))
-            return c.fetchall()
+        if self.no_fts:
+            # Don't blame me for building query with string operations
+            # It should be safe, but if it's not, well, your fault
+            # for not having full text search
+            # I can guarantee a huge performance penalty without fts
+            query = '''SELECT data, resp
+                       FROM haldata
+                       WHERE '''
+            words = map(lambda x: '%{0}%'.format(x), strip_clean(text).split())
+            query += ' OR '.join(['data LIKE ?']*len(words))
+            with self.db_lock:
+                c = self.db.execute(query, words)
+                return c.fetchall()
+        else:
+            text = ' OR '.join(strip_clean(text).split())
+            with self.db_lock:
+                c = self.db.execute('''SELECT idx.data, data.resp
+                                       FROM haldata data, halindex idx
+                                       WHERE idx.data MATCH ?
+                                       AND data.id == idx.docid''', (text,))
+                return c.fetchall()
 
     def search(self, input):
         """Returns tuple(index:str, resp:list, priority:float)

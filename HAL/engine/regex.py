@@ -1,6 +1,7 @@
 import re
 import sys
 import random
+import warnings
 try:
     import cPickle as pickle
 except ImportError:
@@ -13,7 +14,10 @@ from difflib import SequenceMatcher
 from threading import Lock
 from contextlib import closing
 
-from pysqlite2 import dbapi2 as sqlite3
+try:
+    from pysqlite2 import dbapi2 as sqlite3
+except ImportError:
+    import sqlite3 # doubt the vanilla one has fts
 
 from HAL.string import strip_clean, normalize, rewhite
 renotword = re.compile(r'\W+')
@@ -31,10 +35,32 @@ class RegexEngine(BaseEngine):
         # int id => regex
         self.regex = {}
         self._loaded_from_file = False
+        self.no_fts = False
         try:
             self.db.execute('SELECT * FROM halindex LIMIT 1')
-        except sqlite3.OperationalError:
-            self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
+        except sqlite3.OperationalError as e:
+            if 'no such table' not in e.args[0]:
+                raise
+            try:
+                self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
+            except sqlite3.OperationalError as e:
+                if 'no such module' not in e.args[0]:
+                    raise
+                # try fts3 instead
+                try:
+                    self.db.execute('CREATE VIRTUAL TABLE halindex USING fts3(data)')
+                except sqlite3.OperationalError as e:
+                    if 'no such module' in e.args[0]:
+                        #raise ImportError('You need a version of sqlite that supports full text search')
+                        self.no_fts = True
+                        warnings.warn('Huge performance penalty expected '
+                                      'without full text search support '
+                                      'in sqlite')
+                        self.db.execute('''CREATE TABLE halindex (
+                                               docid INTEGER,
+                                               data TEXT)''')
+                    else:
+                        raise
             self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
                                    regex TEXT UNIQUE, resp TEXT)''')
         else:
@@ -99,13 +125,28 @@ class RegexEngine(BaseEngine):
                 add_entry(last, resp)
     
     def _search_db(self, text):
-        text = ' OR '.join(strip_clean(text).split())
-        with self.db_lock:
-            c = self.db.execute('''SELECT data.rowid, data.resp
-                                   FROM haldata data, halindex idx
-                                   WHERE idx.data MATCH ?
-                                   AND data.rowid == idx.docid''', (text,))
-            return c.fetchall()
+        if self.no_fts:
+            # Don't blame me for building query with string operations
+            # It should be safe, but if it's not, well, your fault
+            # for not having full text search
+            # I can guarantee a huge performance penalty without fts
+            query = '''SELECT data.rowid, data.resp
+                       FROM haldata data, halindex idx
+                       WHERE '''
+            words = map(lambda x: '%{0}%'.format(x), strip_clean(text).split())
+            query += ' OR '.join(['idx.data LIKE ?']*len(words))
+            query += ' AND data.rowid == idx.docid'
+            with self.db_lock:
+                c = self.db.execute(query, words)
+                return c.fetchall()
+        else:
+            text = ' OR '.join(strip_clean(text).split())
+            with self.db_lock:
+                c = self.db.execute('''SELECT data.rowid, data.resp
+                                       FROM haldata data, halindex idx
+                                       WHERE idx.data MATCH ?
+                                       AND data.rowid == idx.docid''', (text,))
+                return c.fetchall()
     
     def search(self, input):
         input = rewhite.sub(' ', strip_clean(input))

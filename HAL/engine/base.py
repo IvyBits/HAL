@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 
 class BaseEngine(object):
     """Template of an engine"""
+    
+    __metaclass__ = ABCMeta
     @abstractmethod
     def __init__(self, file=None):
         """May construct from file if needed, file should be string,

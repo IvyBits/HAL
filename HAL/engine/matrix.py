@@ -29,8 +29,11 @@ class MatrixEngine(GeneralEngine):
         def getdiff(text):
             diff.set_seq2(text)
             return diff.ratio()
+        def sortset(text):
+            return cleaned.find(text)
         data = filter(matches, data.iteritems())
-        data = [(index, resp, getdiff(' '.join(index))) for index, resp in data]
+        data = [(index, resp, getdiff(' '.join(sorted(index, key=sortset))))
+                for index, resp in data]
         data.sort(key=lambda x: x[2], reverse=True)
         return data
 

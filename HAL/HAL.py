@@ -2,6 +2,8 @@ from collections import namedtuple, Sequence
 import logging
 
 from engine import *
+import spam
+import random
 
 ENGINES = ('regex', 'general', 'matrix', 'oneword', 'generic')
 class HALengineList(namedtuple('HALengineList', ENGINES)):
@@ -12,6 +14,22 @@ class HALengineInit(namedtuple('HALengineInit', ENGINES)):
     def __new__(_cls, regex=None, general=None, matrix=None, oneword=None, generic=None):
         'Create new instance of HALengineInit(regex, general, matrix, oneword, generic)'
         return tuple.__new__(_cls, (regex, general, matrix, oneword, generic))
+
+class SpamEngine:
+    """Duck-typed engine for spam procesing"""
+    resp = ['Please stop spamming me.',
+            'Why are you spamming me?',
+            'What was that?',
+            'Do you enjoy spam?',
+            'Stop spamming please.',
+            'Are you spamming me?',
+            'Can you please speak normally?',
+            'What language is that?',
+            "I don't understand spam.",
+            'Seems like you have nothing good to say.']
+    def final(self, input):
+        if spam.check(input):
+            return random.choice(self.resp)
 
 class HAL(object):
     version = 'git'
@@ -51,14 +69,22 @@ class HAL(object):
                 load_data(toload, getattr(self.engines, engine).load, engine)
         
         self.prengine = []
-        self.postengine = []
+        self.postengine = [SpamEngine()]
     
-    def answer(self, question, context=None):
+    def answer(self, question, context=None, recurse=0):
+        if recurse > 3:
+            return 'Recursion Error'
         engines = list(self.prengine)
         engines.extend(self.engines)
+        generic = engines.pop()
         engines.extend(self.postengine)
+        engines.append(generic)
         for engine in engines:
             res = engine.final(question)
             if res is not None:
                 break
+        if res.startswith('>'):
+            # Only exists for compatibility with old files
+            # Will be removed when the main db is cleaned up
+            return self.answer(res[1:], context, recurse+1)
         return res
