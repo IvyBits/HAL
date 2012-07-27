@@ -2,6 +2,7 @@ from collections import namedtuple, Sequence
 import logging
 
 from engine import *
+from context import Context
 import spam
 import random
 
@@ -30,6 +31,26 @@ class SpamEngine:
     def final(self, input):
         if spam.check(input):
             return random.choice(self.resp)
+
+class ComboEngine:
+    """Engine to merge outputs of others"""
+    def __init__(self, *args):
+        self.engines = args
+    def output(self, input):
+        out = []
+        for engine in self.engines:
+            o = engine.output(input)
+            if o is not None:
+                out.extend(o)
+        out.sort(key=lambda x: x[1], reverse=True)
+        return out
+    def final(self, input):
+        data = self.output(input)
+        if not data:
+            return None
+        kazi = max(a[1] for a in data)
+        data = filter(lambda x: x[1] == kazi, data)
+        return random.choice(data)[0]
 
 class HAL(object):
     version = 'git'
@@ -70,19 +91,31 @@ class HAL(object):
         
         self.prengine = []
         self.postengine = [SpamEngine()]
+        self._context = Context(self)
+    
+    def context(self):
+        return self._context.fork()
     
     def answer(self, question, context=None, recurse=0):
         if recurse > 3:
             return 'Recursion Error'
+        if context is None:
+            context = self._context
         engines = list(self.prengine)
-        engines.extend(self.engines)
-        generic = engines.pop()
+        engines.append(ComboEngine(*self.engines[:3]))
+        engines.append(self.engines.oneword)
         engines.extend(self.postengine)
-        engines.append(generic)
+        engines.append(self.engines.generic)
         for engine in engines:
             res = engine.final(question)
             if res is not None:
                 break
+        try:
+            res = context.subst(res)
+        except ValueError as e:
+            logging.getLogger('HAL').error('Fail to substitute: '
+                                           '%s in string %s',
+                                           e.args[0], res)
         if res.startswith('>'):
             # Only exists for compatibility with old files
             # Will be removed when the main db is cleaned up
