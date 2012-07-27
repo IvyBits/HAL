@@ -81,4 +81,4 @@ class Context(dict):
         return input
     
     def answer(self, ques):
-        self.engine.answer(ques, self)
+        return self.engine.answer(ques, self)
