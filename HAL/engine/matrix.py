@@ -24,8 +24,14 @@ class MatrixEngine(GeneralEngine):
                 data[key] = resp
         diff = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input)
         cleaned = input.lower()
+        cleaned_words = cleaned.split()
         def matches(entry):
-            return all(x in cleaned for x in entry[0])
+            #return all(x in cleaned for x in entry[0])
+            words = cleaned_words
+            for key in entry[0]:
+                if not any(x.startswith(key) for x in words):
+                    return False
+            return True
         def getdiff(text):
             diff.set_seq2(text)
             return diff.ratio()
