@@ -7,7 +7,7 @@ with open('README.rst') as file:
     long_description = file.read()
 
 setup(name='HAL',
-      version='0.0.2',
+      version='0.0.3',
       description='Powerful AI Framework',
       long_description=long_description,
       author='Xiaomao Chen',
@@ -18,6 +18,7 @@ setup(name='HAL',
       entry_points={
         'console_scripts': [
             'hal = HAL.mainentry:main',
+            'whal = HAL.tkgui:main',
         ],
       },
       classifiers=[
