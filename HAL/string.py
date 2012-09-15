@@ -6,11 +6,7 @@ _encoding = 'mbcs' if os.name == 'nt' else 'utf-8'
 rewhite = re.compile(r'\s+')
 
 def strip_clean(text, allow='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz +'):
-    out = []
-    for c in text:
-        if c in allow:
-            out.append(c)
-    return ''.join(out)
+    return ''.join(c for c in text if c in allow)
 
 def normalize(text):
     if type(text) is not unicode:
