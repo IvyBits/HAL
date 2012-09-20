@@ -3,10 +3,6 @@ import sys
 import random
 import warnings
 try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
-try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
