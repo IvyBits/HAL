@@ -1,5 +1,6 @@
 from difflib import SequenceMatcher
 from HAL.string import strip_clean
+from HAL.lang.keywords import keywords
 
 try:
     from HAL.engine.general import GeneralEngine
@@ -31,6 +32,7 @@ class MatrixEngine(GeneralEngine):
         cleaned = strip_clean(input.lower())
         cleaned_words = cleaned.split()
         words = self.state.union(cleaned_words)
+        #print words
         def matches(entry):
             for key in entry[0]:
                 if not any(x.startswith(key) for x in words):
@@ -45,7 +47,7 @@ class MatrixEngine(GeneralEngine):
         data = [(index, resp, getdiff(' '.join(sorted(index, key=sortset))))
                 for index, resp in data]
         data.sort(key=lambda x: x[2], reverse=True)
-        self.state = set(cleaned_words)
+        self.state = keywords(input)
         return data
 
 if __name__ == '__main__':
