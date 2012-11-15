@@ -1,4 +1,5 @@
 from difflib import SequenceMatcher
+from HAL.string import strip_clean
 
 try:
     from HAL.engine.general import GeneralEngine
@@ -7,6 +8,10 @@ except ImportError:
     from general import GeneralEngine
 
 class MatrixEngine(GeneralEngine):
+    def __init__(self, *args):
+        GeneralEngine.__init__(self, *args)
+        self.state = set()
+    
     """Matrix Engine: exactly same as GeneralEngine,
        except order and position doesn't matter"""
     def search(self, input):
@@ -22,12 +27,11 @@ class MatrixEngine(GeneralEngine):
                 data[key].extend(resp)
             else:
                 data[key] = resp
-        diff = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input)
-        cleaned = input.lower()
+        diff = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input + ' '.join(self.state))
+        cleaned = strip_clean(input.lower())
         cleaned_words = cleaned.split()
+        words = self.state.union(cleaned_words)
         def matches(entry):
-            #return all(x in cleaned for x in entry[0])
-            words = cleaned_words
             for key in entry[0]:
                 if not any(x.startswith(key) for x in words):
                     return False
@@ -41,6 +45,7 @@ class MatrixEngine(GeneralEngine):
         data = [(index, resp, getdiff(' '.join(sorted(index, key=sortset))))
                 for index, resp in data]
         data.sort(key=lambda x: x[2], reverse=True)
+        self.state = set(cleaned_words)
         return data
 
 if __name__ == '__main__':
