@@ -45,7 +45,6 @@ class GeneralEngine(BaseEngine):
                     self.db.execute('CREATE VIRTUAL TABLE halindex USING fts3(data)')
                 except sqlite3.OperationalError as e:
                     if 'no such module' in e.args[0]:
-                        #raise ImportError('You need a version of sqlite that supports full text search')
                         self.no_fts = True
                         warnings.warn('Huge performance penalty expected '
                                       'without full text search support '
@@ -53,6 +52,7 @@ class GeneralEngine(BaseEngine):
                         self.db.execute('''CREATE TABLE halindex (
                                                docid INTEGER,
                                                data TEXT)''')
+                        self.db.execute('CREATE INDEX index ON halindex (data)')
                     else:
                         raise
             self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (

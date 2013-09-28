@@ -4,7 +4,7 @@ import ttk
 from ScrolledText import ScrolledText
 from tkFont import Font
 from threading import Thread
-import sys, os
+import sys, os, io
 from glob import glob
 from getpass import getuser
 from Queue import Queue, Empty
@@ -50,35 +50,21 @@ class Application(tk.Frame):
         self.hal = HAL()
         write(' done\n')
 
-        write('Searching for data files...')
-        def getfiles(dir, ext):
-            return glob(os.path.join(dir, '*.'+ext))
         try:
             dirname = sys.argv[1]
         except IndexError:
             dirname = os.getcwd()
-        def load(out, ext):
-            out.extend(getfiles(dirname, ext))
-        matrix = []
-        substr = []
-        regex = []
-        oneword = []
-        load(matrix, 'mtx')
-        load(substr, 'gen')
-        load(regex, 'rgx')
-        load(oneword, 'ow')
-        write(' %d found\n' % sum(map(len, (matrix, substr, regex, oneword))))
 
-        def loadfiles(files, engine, name):
-            for file in files:
-                write('%s: Loading %s...' % (name, file))
-                engine.load(open(file))
-                write(' done\n')
-
-        loadfiles(matrix, self.hal.engines.matrix, 'Matrix')
-        loadfiles(substr, self.hal.engines.general, 'General')
-        loadfiles(regex, self.hal.engines.regex, 'Regex')
-        loadfiles(oneword, self.hal.engines.oneword, 'One Word:')
+        def loadfiles(pattern, attr, name):
+            engine = getattr(self.hal, attr)
+            for file in glob(os.path.join(dirname, pattern)):
+                write('%s Engine: Loading %s...' % (name, file))
+                engine.load(io.open(file, encoding='utf-8'))
+                write(' Done\n')
+        loadfiles('*.gen', 'matrix', 'Matrix')
+        loadfiles('*.mtx', 'general', 'General')
+        loadfiles('*.rgx', 'regex', 'Regex')
+        loadfiles('*.ow' , 'oneword', 'One Word')
         write('\n')
 
         user = getuser()
@@ -88,10 +74,9 @@ class Application(tk.Frame):
         prompt.ljust(length)
         halpro.ljust(length)
         self.prompt, self.halpro = prompt, halpro
-        self.context = self.hal.context()
-        self.context['USERNAME'] = user
+        self.context = {'USERNAME': user}
 
-        write(halpro + 'Hello %s. I am HAL %s.'%(user, self.hal.version) + '\n\n')
+        write(halpro + 'Hello %s. I am HAL %s.' % (user, self.hal.version) + '\n\n')
 
         self.entry.bind('<Return>', self.answer)
     
@@ -102,8 +87,6 @@ class Application(tk.Frame):
         write(self.prompt + input + '\n')
         write(self.halpro + answer + '\n\n')
         self.input.set('')
-        #self.history.append(input)
-        #self.histindex = len(self.history) + 1
     
     def createWidgets(self):
         font_title = Font(family='Segoe UI', size=25, weight='bold')
@@ -123,6 +106,7 @@ class Application(tk.Frame):
         
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        self.root.wm_title('HAL')
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
         self.rowconfigure(1, weight=1)
