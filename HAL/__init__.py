@@ -1,1 +1,1 @@
-from HAL.hal import HAL
+from HAL.main import HAL
