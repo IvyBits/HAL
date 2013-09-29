@@ -17,8 +17,7 @@ class GenericEngine(BaseEngine):
                      "I can't seem to understand.",
                      'Wait, I got a phone call.',
                      'Oh, my keyboard hung again.',
-                     'Sorry, my computer lagged.',
-                     'Only Jon Skeet knows the answer to that one.'}
+                     'Sorry, my computer lagged.'}
         if file:
             with open(file) as file:
                 self.data.update(i.strip() for i in file)

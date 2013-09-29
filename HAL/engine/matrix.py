@@ -1,5 +1,5 @@
 from difflib import SequenceMatcher
-from HAL.string import strip_clean
+from HAL.stringutils import strip_clean
 from HAL.lang.keywords import keywords
 
 try:

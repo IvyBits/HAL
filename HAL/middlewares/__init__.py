@@ -1,0 +1,1 @@
+from HAL.middlewares.spam import SpamFilter

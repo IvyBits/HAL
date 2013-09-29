@@ -15,7 +15,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from HAL.string import strip_clean, normalize, rewhite
+from HAL.stringutils import strip_clean, normalize, rewhite
 # Inherit from Abstract Base Class if possible
 try:
     from HAL.engine.base import BaseEngine

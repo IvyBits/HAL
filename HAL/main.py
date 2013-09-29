@@ -1,14 +1,12 @@
-from collections import namedtuple, Sequence
 import logging
+import random
+import re
+from operator import itemgetter
 
 from HAL.engine import *
 from HAL.context import default as default_context
-from HAL.middleware import Middleware
-from HAL import spam
-import random
-import re
+from HAL.middlewares import SpamFilter
 
-from operator import itemgetter
 try:
     from itertools import imap as map
 except ImportError:
@@ -16,21 +14,6 @@ except ImportError:
 
 logger = logging.getLogger('HAL')
 
-class SpamFilter(Middleware):
-    """Duck-typed engine for spam procesing"""
-    resp = ['Please stop spamming me.',
-            'Why are you spamming me?',
-            'What was that?',
-            'Do you enjoy spam?',
-            'Stop spamming please.',
-            'Are you spamming me?',
-            'Can you please speak normally?',
-            'What language is that?',
-            "I don't understand spam.",
-            'Seems like you have nothing good to say.']
-    def input(self, input):
-        if spam.check(input):
-            return random.choice(self.resp)
 
 class ComboEngine(object):
     """Engine to merge outputs of others"""

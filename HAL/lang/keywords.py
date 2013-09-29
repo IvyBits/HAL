@@ -1,8 +1,7 @@
 import string
 import itertools
-import functools
 
-from HAL.string import strip_clean
+from HAL.stringutils import strip_clean
 
 alpha = set(string.ascii_letters)
 alpha.add(' ')
@@ -25,7 +24,7 @@ def filterjunk(words, junk=None, filter=filter):
     the junk argument"""
     if junk is None:
         junk = junkword
-    return filter(lambda x: x not in junkword, words)
+    return filter(lambda x: x not in junk, words)
 
 def ifilterjunk(*args, **kwargs):
     return filterjunk(*args, filter=itertools.ifilter, **kwargs)

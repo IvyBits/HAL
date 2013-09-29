@@ -15,7 +15,7 @@ try:
 except ImportError:
     import sqlite3 # doubt the vanilla one has fts
 
-from HAL.string import strip_clean, normalize, rewhite
+from HAL.stringutils import strip_clean, normalize, rewhite
 renotword = re.compile(r'\W+')
 # Inherit from Abstract Base Class if possible
 try:
