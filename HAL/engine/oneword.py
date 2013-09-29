@@ -14,7 +14,7 @@ try:
     from HAL.engine.base import BaseEngine
 except ImportError:
     BaseEngine = object
-from HAL.stringutils import strip_clean, normalize, rewhite
+from HAL.stringutils import strip_clean, normalize
 
 rewb = re.compile(r'\W+')
 
@@ -90,8 +90,6 @@ class OneWordEngine(BaseEngine):
             return
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from glob import glob
     engine = OneWordEngine()
     engine.load("""\
 #GURU

@@ -1,3 +1,5 @@
+from functools import partial
+from operator import contains, itemgetter
 import re
 import sys
 import random
@@ -129,7 +131,7 @@ class RegexEngine(BaseEngine):
             query = '''SELECT data.rowid, data.resp
                        FROM haldata data, halindex idx
                        WHERE '''
-            words = map(lambda x: '%{0}%'.format(x), strip_clean(text).split())
+            words = map('%{0}%'.format, strip_clean(text).split())
             query += ' OR '.join(['idx.data LIKE ?']*len(words))
             query += ' AND data.rowid == idx.docid'
             with self.db_lock:
@@ -148,7 +150,7 @@ class RegexEngine(BaseEngine):
         input = rewhite.sub(' ', strip_clean(input))
         out = []
         regexes = []
-        diff_ = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input)
+        diff_ = SequenceMatcher(partial(contains, '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\'), input)
         def diff(text):
             diff_.set_seq2(text)
             return diff_.ratio()
@@ -171,13 +173,14 @@ class RegexEngine(BaseEngine):
                     priority = diff(match.group(0))
                 
                 g0 = match.group(0)
+
                 def expand(resp):
                     return match.expand(resp.replace(r'\0', g0).replace('\g<0>', g0))
                 
                 resp = map(expand, resp) # expand \1, \g<1>, \g<name>
                 out.append((match, resp, priority))
         
-        out.sort(key=lambda x: x[2], reverse=True)
+        out.sort(key=itemgetter(2), reverse=True)
         return out
     
     def output(self, input, context=None):
@@ -193,9 +196,6 @@ class RegexEngine(BaseEngine):
             return
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from glob import glob
-    import time
     engine = RegexEngine()
     engine.load("""\
 #JON SKEET IS (GOOD|SMART|INTELLIGENT)

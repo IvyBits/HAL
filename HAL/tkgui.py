@@ -90,7 +90,6 @@ class Application(tk.Frame):
     
     def createWidgets(self):
         font_title = Font(family='Segoe UI', size=25, weight='bold')
-        font_normal = Font(family='Segoe UI', size=11)
         font_console = Font(family='Consolas', size=11)
         self.input = tk.StringVar()
         

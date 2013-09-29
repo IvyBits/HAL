@@ -9,6 +9,7 @@ except ImportError:
 from contextlib import closing
 import random
 
+
 class GenericEngine(BaseEngine):
     """The generic engine that responds with
        one-size-fit-all-but-useless answers"""
@@ -30,10 +31,7 @@ class GenericEngine(BaseEngine):
         return self._loaded_from_file
 
     def close(self):
-        if self.file is not None:
-            with open(file, 'w') as file:
-                for entry in self.data:
-                    print >>file, entry
+        pass
     
     def __del__(self):
         self.close()
@@ -46,7 +44,7 @@ class GenericEngine(BaseEngine):
                 self.data.append(line.strip())
     
     def output(self, input, context=None):
-        return map(lambda x: (x, 0.0), self.data)
+        return [(x, 0.0) for x in self.data]
     
     def final(self, input, context=None):
         try:

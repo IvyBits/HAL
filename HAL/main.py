@@ -71,7 +71,6 @@ class HAL(object):
                 break
             action = m.group(1)
             saveto = None
-            out = None
             if action.count('=') > 1:
                 raise ValueError('Too many equal signs')
             if '=' in action:
@@ -106,9 +105,6 @@ class HAL(object):
     def answer(self, question, context=None, recurse=0):
         if recurse > 3:
             return 'Recursion Error'
-        
-        if context is None:
-            context = self._context
         
         for middleware in self.middleware:
             response = middleware.input(question)

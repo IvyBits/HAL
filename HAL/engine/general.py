@@ -1,10 +1,10 @@
-import os
-import re
+from functools import partial
 import random
 import warnings
 from difflib import SequenceMatcher
 from threading import Lock
 from contextlib import closing
+from operator import itemgetter, contains
 
 try:
     from pysqlite2 import dbapi2 as sqlite3
@@ -21,6 +21,7 @@ try:
     from HAL.engine.base import BaseEngine
 except ImportError:
     BaseEngine = object
+
 
 class GeneralEngine(BaseEngine):
     """The substring engine, respond with all entries that is a substring of the input"""
@@ -79,6 +80,7 @@ class GeneralEngine(BaseEngine):
         last = ''
         with self.db_lock, file as file, self.db:
             c = self.db.cursor()
+
             def add_entry(last, resp):
                 index = strip_clean(last).lower()
                 try:
@@ -114,7 +116,7 @@ class GeneralEngine(BaseEngine):
             query = '''SELECT data, resp
                        FROM haldata
                        WHERE '''
-            words = map(lambda x: '%{0}%'.format(x), strip_clean(text).split())
+            words = map('%{0}%'.format, strip_clean(text).split())
             query += ' OR '.join(['data LIKE ?']*len(words))
             with self.db_lock:
                 c = self.db.execute(query, words)
@@ -134,16 +136,14 @@ class GeneralEngine(BaseEngine):
         Note that this method doesn't conform the ABC, you should only use
         it for debugging purpose or you are ONLY using this engine"""
         data = self._search_db(input)
-        diff = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input)
+        diff = SequenceMatcher(partial(contains, '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\'), input)
         cleaned = rewhite.sub(' ', strip_clean(input))
-        def matches(entry):
-            return entry[0] in cleaned
+
         def getdiff(text):
             diff.set_seq2(text)
             return diff.ratio()
-        data = filter(matches, data)
-        data = [(index, resp.split('\f'), getdiff(index)) for index, resp in data]
-        data.sort(key=lambda x: x[2], reverse=True)
+        data = [(index, resp.split('\f'), getdiff(index)) for index, resp in data if index in cleaned]
+        data.sort(key=itemgetter(2), reverse=True)
         return data
     
     def output(self, text, context=None):
@@ -162,8 +162,6 @@ class GeneralEngine(BaseEngine):
             return None
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from glob import glob
     engine = GeneralEngine()
     engine.load("""
 #SIMPLE

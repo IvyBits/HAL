@@ -1,4 +1,6 @@
 from difflib import SequenceMatcher
+from functools import partial
+from operator import itemgetter, contains
 from HAL.stringutils import strip_clean
 from HAL.lang.keywords import keywords
 
@@ -8,13 +10,15 @@ except ImportError:
     # Try to find GeneralEngine when ran as a script
     from general import GeneralEngine
 
+
 class MatrixEngine(GeneralEngine):
+    """Matrix Engine: exactly same as GeneralEngine,
+       except order and position doesn't matter"""
+
     def __init__(self, *args):
         GeneralEngine.__init__(self, *args)
         self.state = set()
-    
-    """Matrix Engine: exactly same as GeneralEngine,
-       except order and position doesn't matter"""
+
     def search(self, input):
         """Returns tuple(index:str, resp:list, priority:float)
         
@@ -28,31 +32,29 @@ class MatrixEngine(GeneralEngine):
                 data[key].extend(resp)
             else:
                 data[key] = resp
-        diff = SequenceMatcher(lambda x: x in '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\', input + ' '.join(self.state))
+        diff = SequenceMatcher(partial(contains, '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\'), input + ' '.join(self.state))
         cleaned = strip_clean(input.lower())
         cleaned_words = cleaned.split()
         words = self.state.union(cleaned_words)
-        #print words
+
         def matches(entry):
             for key in entry[0]:
                 if not any(x.startswith(key) for x in words):
                     return False
             return True
+
         def getdiff(text):
             diff.set_seq2(text)
             return diff.ratio()
-        def sortset(text):
-            return cleaned.find(text)
+
         data = filter(matches, data.iteritems())
-        data = [(index, resp, getdiff(' '.join(sorted(index, key=sortset))))
+        data = [(index, resp, getdiff(' '.join(sorted(index, key=cleaned.find))))
                 for index, resp in data]
-        data.sort(key=lambda x: x[2], reverse=True)
+        data.sort(key=itemgetter(2), reverse=True)
         self.state = keywords(input)
         return data
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from glob import glob
     engine = MatrixEngine()
     engine.load("""\
 #This file is based on Jon Skeet facts

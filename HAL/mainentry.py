@@ -37,7 +37,7 @@ def main():
     loadengine('*.gen', 'general')
     loadengine('*.mtx', 'matrix')
     loadengine('*.rgx', 'regex')
-    loadengine('*.ow' , 'oneword')
+    loadengine('*.ow',  'oneword')
     user = getuser()
     prompt = '-%s:' % user
     halpro = '-HAL:'
