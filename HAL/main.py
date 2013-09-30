@@ -5,7 +5,8 @@ from operator import itemgetter
 
 from HAL.engine import *
 from HAL.context import default as default_context
-from HAL.middlewares import SpamFilter
+from HAL.middlewares import SpamFilter, WikiWare
+from HAL.version import version as HALversion
 
 try:
     from itertools import imap as map
@@ -38,8 +39,9 @@ class ComboEngine(object):
         data = [x for x in data if x[1] == kazi]
         return random.choice(data)[0]
 
+
 class HAL(object):
-    version = 'git'
+    version = HALversion
     def __init__(self):
         self.regex   = RegexEngine()
         self.general = GeneralEngine()
@@ -47,7 +49,7 @@ class HAL(object):
         self.oneword = OneWordEngine()
         self.generic = GenericEngine()
         
-        self.middleware = [SpamFilter()]
+        self.middleware = [WikiWare(), SpamFilter()]
         self.globals = default_context.copy()
     
     remacro = re.compile(r'{([^{}]+)}')
@@ -121,6 +123,11 @@ class HAL(object):
             response = self._subst(response, context=context)
         except ValueError as e:
             logger.error('Fail to substitute: %s in string %s', e, response)
+
+        for middleware in reversed(self.middleware):
+            result = middleware.output(response)
+            if result: # Prevent a bad middleware from eating everything
+                response = result
         
         if response.startswith('>'):
             # Only exists for compatibility with old files

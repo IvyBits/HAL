@@ -51,8 +51,15 @@ def main():
     try:
         while True:
             line = raw_input(prompt)
-            print(halpro, hal.answer(line, context))
+            try:
+                print(halpro, hal.answer(line, context))
+            except IOError as e:
+                if e.errno != 0:
+                    raise
+                print() # It gets error 0 when some characters can't be displayeed
             print()
+    except (EOFError, KeyboardInterrupt):
+        pass
     finally:
         print(halpro, 'Goodbye.')
 
