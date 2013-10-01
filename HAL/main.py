@@ -14,6 +14,7 @@ except ImportError:
     pass
 
 logger = logging.getLogger('HAL')
+DEBUG_MODE = False
 
 
 class ComboEngine(object):
@@ -35,6 +36,9 @@ class ComboEngine(object):
         data = self.output(input)
         if not data:
             return None
+        if DEBUG_MODE:
+            for content, probility in data:
+                print '%.6f: %s' % (probility, content)
         kazi = max(map(itemgetter(1), data))
         data = [x for x in data if x[1] == kazi]
         return random.choice(data)[0]

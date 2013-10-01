@@ -19,6 +19,7 @@ except ImportError:
 
 from HAL.stringutils import strip_clean, normalize, rewhite
 renotword = re.compile(r'\W+')
+respaces = re.compile(r'\s\s+')
 # Inherit from Abstract Base Class if possible
 try:
     from HAL.engine.base import BaseEngine
@@ -133,7 +134,7 @@ class RegexEngine(BaseEngine):
                 g0 = match.group(0)
 
                 def expand(resp):
-                    return match.expand(resp.replace(r'\0', g0).replace('\g<0>', g0))
+                    return respaces.sub(' ', match.expand(resp.replace(r'\0', g0).replace('\g<0>', g0)))
                 
                 resp = map(expand, resp) # expand \1, \g<1>, \g<name>
                 out.append((match, resp, priority))
@@ -146,6 +147,7 @@ class RegexEngine(BaseEngine):
         for match, resps, diff in self.search(input):
             for resp in resps:
                 out.append((resp, diff))
+        return out
     
     def final(self, input, context=None):
         try:
