@@ -56,7 +56,7 @@ def main():
             except IOError as e:
                 if e.errno != 0:
                     raise
-                print() # It gets error 0 when some characters can't be displayeed
+                print() # It gets error 0 when some characters can't be displayed
             print()
     except (EOFError, KeyboardInterrupt):
         pass

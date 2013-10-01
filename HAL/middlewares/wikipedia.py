@@ -1,13 +1,12 @@
 # encoding: utf-8
-from functools import partial
-from operator import contains
-
 from HAL.middleware import Middleware
+from HAL.utils import LimitedSizeDict
+from HAL.version import version
+
 from urllib import urlencode
 from urllib2 import urlopen, Request
 from contextlib import closing
 from bs4 import BeautifulSoup
-from HAL.version import version
 
 import re
 import json
@@ -138,7 +137,7 @@ def sentences(text, count=2):
     return ' '.join(map(unicode.strip, resentence.findall(text)[:count]))
 
 
-def get_wikipedia(keyword, cache={}):
+def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
     try:
         return cache[keyword.lower()]
     except KeyError:

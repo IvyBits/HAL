@@ -81,28 +81,29 @@ class GeneralEngine(BaseEngine):
         with self.db_lock, file as file, self.db:
             c = self.db.cursor()
 
-            def add_entry(last, resp):
+            def add_entry(last, resp, formjoin='\f'.join):
                 index = strip_clean(last).lower()
                 try:
-                    c.execute('INSERT INTO haldata (resp, data) VALUES (?, ?)', ('\f'.join(resp), index))
+                    c.execute('INSERT INTO haldata (resp, data) VALUES (?, ?)', (formjoin(resp), index))
                 except sqlite3.IntegrityError:
                     # Duplicate index
                     id, resp_ = c.execute('SELECT id, resp FROM haldata WHERE data = ?', (index,)).fetchall()[0]
-                    resp = resp_ + '\f' + '\f'.join(resp)
+                    resp = '%s\f%s' % (resp_, formjoin(resp))
                     c.execute('UPDATE haldata SET resp = ? WHERE id = ?', (resp, id))
                 else:
                     c.execute('INSERT INTO halindex(docid, data) VALUES (?, ?)', (c.lastrowid, index))
+            addresp = resp.append
             for line in file:
-                line = normalize(line.strip())
+                line = normalize(line.rstrip())
                 if not line:
                     continue
                 if line[0] == '#':
                     if resp:
                         add_entry(last, resp)
-                    resp = []
+                    del resp[:]
                     last = line[1:]
                 else:
-                    resp.append(line)
+                    addresp(line)
             if resp:
                 add_entry(last, resp)
     
@@ -120,7 +121,7 @@ class GeneralEngine(BaseEngine):
             query += ' OR '.join(['data LIKE ?']*len(words))
             with self.db_lock:
                 c = self.db.execute(query, words)
-                return c.fetchall()
+                return c
         else:
             text = ' OR '.join(strip_clean(text).split())
             with self.db_lock:
@@ -128,7 +129,7 @@ class GeneralEngine(BaseEngine):
                                        FROM haldata data, halindex idx
                                        WHERE idx.data MATCH ?
                                        AND data.id == idx.docid''', (text,))
-                return c.fetchall()
+                return c
 
     def search(self, input):
         """Returns tuple(index:str, resp:list, priority:float)

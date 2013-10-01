@@ -1,8 +1,9 @@
 from difflib import SequenceMatcher
 from functools import partial
-from operator import itemgetter, contains
+from operator import itemgetter, contains, methodcaller
 from HAL.stringutils import strip_clean
 from HAL.lang.keywords import keywords
+from itertools import imap
 
 try:
     from HAL.engine.general import GeneralEngine
@@ -39,7 +40,7 @@ class MatrixEngine(GeneralEngine):
 
         def matches(entry):
             for key in entry[0]:
-                if not any(x.startswith(key) for x in words):
+                if not any(imap(methodcaller('startswith', key), words)):
                     return False
             return True
 
