@@ -12,7 +12,7 @@ from HAL.version import version
 import re
 import json
 
-requestion = re.compile(r'''wh(?:o|ere|en|at|y)(?:['"](?:s|re)|\s+is|\s+are)\s+(?:(?:an?|the)\s+)?([a-zA-Z0-9 _'"]+)''')
+requestion = re.compile(r'''wh(?:o|ere|en|at|y)(?:['"](?:s|re)|\s+is|\s+are)\s+(?:(?:an?|the)\s+)?([a-zA-Z0-9 _'"]+)''', re.I)
 rewikisub = re.compile(r'\[wiki:(.*?)\]')
 #resentence = re.compile(r'.*?(?:[.?!](?=\s))|$', re.M)
 resentence = re.compile(r'''# Match a sentence ending in punctuation or EOS.
@@ -138,11 +138,16 @@ def sentences(text, count=2):
     return ' '.join(map(unicode.strip, resentence.findall(text)[:count]))
 
 
-def get_wikipedia(keyword):
-    articles = list(find_article(keyword))
-    article = get_best_article(articles)
-    article = download_article(article)
-    return sentences(get_lead(article))
+def get_wikipedia(keyword, cache={}):
+    try:
+        return cache[keyword.lower()]
+    except KeyError:
+        articles = list(find_article(keyword))
+        article = get_best_article(articles)
+        article = download_article(article)
+        result = sentences(get_lead(article))
+        cache[keyword.lower()] = result
+        return result
 
 
 class WikiWare(Middleware):
