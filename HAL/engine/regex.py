@@ -25,57 +25,28 @@ try:
 except ImportError:
     BaseEngine = object
 
+
 class RegexEngine(BaseEngine):
     def __init__(self, file=None):
         if file is None:
             file = ':memory:'
         self.db = sqlite3.connect(file, check_same_thread=False)
-        # int id => regex
+        # regex string => object
         self.regex = {}
         self._loaded_from_file = False
         self.no_fts = False
         try:
-            self.db.execute('SELECT * FROM halindex LIMIT 1')
-        except sqlite3.OperationalError as e:
-            if 'no such table' not in e.args[0]:
-                raise
-            try:
-                self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
-            except sqlite3.OperationalError as e:
-                if 'no such module' not in e.args[0]:
-                    raise
-                # try fts3 instead
-                try:
-                    self.db.execute('CREATE VIRTUAL TABLE halindex USING fts3(data)')
-                except sqlite3.OperationalError as e:
-                    if 'no such module' in e.args[0]:
-                        #raise ImportError('You need a version of sqlite that supports full text search')
-                        self.no_fts = True
-                        warnings.warn('Huge performance penalty expected '
-                                      'without full text search support '
-                                      'in sqlite')
-                        self.db.execute('''CREATE TABLE halindex (
-                                               docid INTEGER,
-                                               data TEXT)''')
-                    else:
-                        raise
-            self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
-                                   regex TEXT UNIQUE, resp TEXT)''')
-        else:
+            self.db.execute('''CREATE TABLE haldata (
+                               regex TEXT UNIQUE, resp TEXT)''')
+        except sqlite3.OperationalError:
             self._loaded_from_file = True
+        self.db.create_function('REGEXP', 2, self.regexp)
         self.db_lock = Lock()
-        self._gen_regex()
-    
+
     @property
     def loaded_from_file(self):
         return self._loaded_from_file
-    
-    def _gen_regex(self):
-        with self.db_lock:
-            sql = 'SELECT rowid, regex FROM haldata'
-            for id, pattern in self.db.execute(sql):
-                self.regex[id] = re.compile(pattern, re.I)
-    
+
     def close(self):
         self.db.close()
     
@@ -89,6 +60,7 @@ class RegexEngine(BaseEngine):
         last = ''
         with self.db_lock, self.db, file as file:
             c = self.db.cursor()
+
             def add_entry(last, resp):
                 try:
                     regex = re.compile(last, re.I)
@@ -104,10 +76,7 @@ class RegexEngine(BaseEngine):
                         resp = resp_ + '\f' + '\f'.join(resp)
                         c.execute('UPDATE haldata SET resp = ? WHERE rowid = ?', (resp, rowid))
                     else:
-                        rowid = c.lastrowid
-                        index = renotword.sub(' ', last)
-                        c.execute('INSERT INTO halindex(docid, data) VALUES (?, ?)', (rowid, index))
-                        self.regex[rowid] = regex
+                        self.regex[last] = regex
             for line in file:
                 line = normalize(line.strip())
                 if not line:
@@ -121,41 +90,30 @@ class RegexEngine(BaseEngine):
                     resp.append(line)
             if resp:
                 add_entry(last, resp)
-    
+
+    def regexp(self, regex, item):
+        try:
+            return self.regex[regex].search(item) is not None
+        except KeyError:
+            print 'Serious Error on:', regex
+            return re.search(regex, item, re.I) is not None
+
     def _search_db(self, text):
-        if self.no_fts:
-            # Don't blame me for building query with string operations
-            # It should be safe, but if it's not, well, your fault
-            # for not having full text search
-            # I can guarantee a huge performance penalty without fts
-            query = '''SELECT data.rowid, data.resp
-                       FROM haldata data, halindex idx
-                       WHERE '''
-            words = map('%{0}%'.format, strip_clean(text).split())
-            query += ' OR '.join(['idx.data LIKE ?']*len(words))
-            query += ' AND data.rowid == idx.docid'
-            with self.db_lock:
-                c = self.db.execute(query, words)
-                return c.fetchall()
-        else:
-            text = ' OR '.join(strip_clean(text).split())
-            with self.db_lock:
-                c = self.db.execute('''SELECT data.rowid, data.resp
-                                       FROM haldata data, halindex idx
-                                       WHERE idx.data MATCH ?
-                                       AND data.rowid == idx.docid''', (text,))
-                return c.fetchall()
+        with self.db_lock:
+            return self.db.execute('''SELECT regex, resp FROM haldata WHERE ? REGEXP regex''', (text,))
     
     def search(self, input):
         input = rewhite.sub(' ', strip_clean(input))
         out = []
         regexes = []
         diff_ = SequenceMatcher(partial(contains, '?,./<>`~!@#$%&*()_+-={}[];:\'"|\\'), input)
+
         def diff(text):
             diff_.set_seq2(text)
             return diff_.ratio()
-        for id, resp in self._search_db(input):
-            regexes.append((self.regex[id], resp.split('\f')))
+
+        for regex, resp in self._search_db(input):
+            regexes.append((self.regex[regex], resp.split('\f')))
 
         for regex, resp in regexes:
             match = regex.search(input)
