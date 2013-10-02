@@ -1,5 +1,4 @@
 import Tkinter as tk
-from Tkinter import N, S, W, E
 import ttk
 from ScrolledText import ScrolledText
 from tkFont import Font
@@ -8,6 +7,7 @@ import sys, os, io
 from glob import glob
 from getpass import getuser
 from Queue import Queue, Empty
+
 
 class Application(tk.Frame):
     def __init__(self, master):
@@ -64,7 +64,7 @@ class Application(tk.Frame):
         loadfiles('*.gen', 'matrix', 'Matrix')
         loadfiles('*.mtx', 'general', 'General')
         loadfiles('*.rgx', 'regex', 'Regex')
-        loadfiles('*.ow' , 'oneword', 'One Word')
+        loadfiles('*.ow',  'oneword', 'One Word')
         write('\n')
 
         user = getuser()
@@ -80,7 +80,7 @@ class Application(tk.Frame):
 
         self.entry.bind('<Return>', self.answer)
     
-    def answer(self, e):
+    def answer(self, e=None):
         write = self.write
         input = self.input.get()
         answer = self.hal.answer(input, self.context)
@@ -89,28 +89,33 @@ class Application(tk.Frame):
         self.input.set('')
     
     def createWidgets(self):
-        font_title = Font(family='Segoe UI', size=25, weight='bold')
         font_console = Font(family='Consolas', size=11)
         self.input = tk.StringVar()
-        
-        title = ttk.Label(self, text='HAL', font=font_title)
+        self.config(borderwidth=10)
+
         self.console = ScrolledText(self, font=font_console, state='normal')
         self.entry = ttk.Entry(self, textvariable=self.input, font=font_console)
-        #submit = ttk.Button(text='Submit')
+        submit = ttk.Button(self, text='Submit')
 
-        title.grid(row=0, columnspan=2, sticky='NS')
-        self.console.grid(row=1, columnspan=2, sticky='WENS')
+        self.console.grid(columnspan=3, sticky='WENS')
+        tk.LabelFrame(self, height=5).grid(row=1)
         self.entry.grid(row=2, sticky='WE')
-        #submit.grid(row=2, column=1, sticky='E')
+        tk.LabelFrame(self, width=5).grid(row=2, column=1)
+        submit.grid(row=2, column=2)
+        submit['command'] = self.answer
         
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         self.root.wm_title('HAL')
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+
 
 def main():
     root = tk.Tk()
     app = Application(master=root)
     app.mainloop()
+
+if __name__ == '__main__':
+    main()
