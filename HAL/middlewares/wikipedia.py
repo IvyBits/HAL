@@ -143,6 +143,9 @@ def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
     except KeyError:
         articles = list(find_article(keyword))
         article = get_best_article(articles)
+        if article is None:
+            cache[keyword.lower()] = None
+            return
         article = download_article(article)
         result = sentences(get_lead(article))
         cache[keyword.lower()] = result
