@@ -164,17 +164,11 @@ class WikiWare(Middleware):
     def __init__(self):
         self.cache = {}
 
-    def input(self, input):
-        question = requestion.match(input)
-        if question is None:
-            return
-        keyword = question.group(1)
-        if keyword.startswith(blacklist):
-            return
-        return get_wikipedia(keyword)
+    # Input handler was removed so better response cen be used by the engine
+    # However, the [wiki:article] syntax can be used
 
     def output(self, result):
-        return rewikisub.sub(get_wikipedia, result)
+        return rewikisub.sub(lambda match: get_wikipedia(match.group(1)), result)
 
 if __name__ == '__main__':
     try:
