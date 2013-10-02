@@ -17,18 +17,29 @@ except ImportError:
 
 logger = logging.getLogger('HAL')
 
+
 def main():
     logging.basicConfig()
     logging.getLogger().setLevel(logging.INFO)
     # Using the correct encoding when printing
     sys.stdout = codecs.getwriter('mbcs' if os.name == 'nt' else 'utf-8')(sys.stdout, 'replace')
-    
+
+    try:
+        sys.argv.remove('-d')
+    except ValueError:
+        pass
+    else:
+        from HAL import main as _main
+        _main.DEBUG_MODE = True
+        logger.warning('Using debug mode!')
+
     try:
         dir = sys.argv[1]
     except IndexError:
         dir = '.'
     
     hal = HAL()
+
     def loadengine(pattern, name):
         engine = getattr(hal, name)
         for file in glob(os.path.join(dir, pattern)):
