@@ -6,7 +6,9 @@ from HAL.version import version
 from urllib import urlencode
 from urllib2 import urlopen, Request
 from contextlib import closing
+
 from bs4 import BeautifulSoup
+from stemming.porter2 import stem
 
 import re
 import json
@@ -138,17 +140,23 @@ def sentences(text, count=2):
 
 
 def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
+    lower = keyword.lower()
     try:
-        return cache[keyword.lower()]
+        return cache[lower]
     except KeyError:
         articles = list(find_article(keyword))
         article = get_best_article(articles)
         if article is None:
-            cache[keyword.lower()] = None
+            cache[lower] = None
             return
         article = download_article(article)
         result = sentences(get_lead(article))
-        cache[keyword.lower()] = result
+        match = result.lower()
+        if not any(stem(word) in match for word in lower.split()):
+            # none of the keyword was found in the result
+            cache[lower] = None
+            return
+        cache[lower] = result
         return result
 
 
