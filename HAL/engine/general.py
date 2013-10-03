@@ -36,6 +36,9 @@ class GeneralEngine(BaseEngine):
         except sqlite3.OperationalError as e:
             if 'no such table' not in e.args[0]:
                 raise
+            self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
+                                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                   data TEXT UNIQUE, resp TEXT)''')
             try:
                 self.db.execute('CREATE VIRTUAL TABLE halindex USING fts4(data)')
             except sqlite3.OperationalError as e:
@@ -53,12 +56,9 @@ class GeneralEngine(BaseEngine):
                         self.db.execute('''CREATE TABLE halindex (
                                                docid INTEGER,
                                                data TEXT)''')
-                        self.db.execute('CREATE INDEX index ON halindex (data)')
+                        self.db.execute('CREATE INDEX hal_index ON halindex (data)')
                     else:
                         raise
-            self.db.execute('''CREATE TABLE IF NOT EXISTS haldata (
-                                   id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                   data TEXT UNIQUE, resp TEXT)''')
         else:
             self._loaded_from_file = True
         self.db_lock = Lock()
