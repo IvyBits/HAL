@@ -168,7 +168,8 @@ class WikiWare(Middleware):
     # However, the [wiki:article] syntax can be used
 
     def output(self, result):
-        return rewikisub.sub(lambda match: get_wikipedia(match.group(1)), result)
+        return rewikisub.sub(lambda match: get_wikipedia(match.group(1)) or
+                             "I don't know what that means.", result)
 
 if __name__ == '__main__':
     try:
