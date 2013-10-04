@@ -48,7 +48,11 @@ def main():
     loadengine('*.gen', 'general')
     loadengine('*.mtx', 'matrix')
     loadengine('*.rgx', 'regex')
-    loadengine('*.ow',  'oneword')
+
+    for file in glob(os.path.join(dir, '*.xail')):
+        logger.info('Loading %s', file)
+        hal.feed(io.open(file, encoding='utf-8'))
+
     user = getuser()
     prompt = '-%s:' % user
     halpro = '-HAL:'

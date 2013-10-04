@@ -36,6 +36,9 @@ class GenericEngine(BaseEngine):
     def __del__(self):
         self.close()
 
+    def add_entry(self, line, resp):
+        self.data.extend(resp)
+
     def load(self, file):
         if isinstance(file, basestring):
             file = closing(StringIO(file))

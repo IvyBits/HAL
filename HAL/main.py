@@ -1,3 +1,5 @@
+from contextlib import closing
+from io import StringIO
 import logging
 import random
 import re
@@ -50,12 +52,54 @@ class HAL(object):
         self.regex   = RegexEngine()
         self.general = GeneralEngine()
         self.matrix  = MatrixEngine()
-        self.oneword = OneWordEngine()
         self.generic = GenericEngine()
+        self.enginemap = {'#': self.matrix.add_entry,
+                          '@': self.general.add_entry,
+                          '!': self.regex.add_entry}
         
         self.middleware = [WikiWare(), SpamFilter()]
         self.globals = default_context.copy()
-    
+
+    def feed(self, file):
+        if isinstance(file, basestring):
+            file = closing(StringIO(file))
+        engine_map = self.enginemap
+        engine_chars = tuple(engine_map.keys())
+        resp = []
+        last = ''
+        add_entry = None
+        multiline = False
+        add_resp = resp.append
+
+        with file as file:
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                elif line[0] == ';':
+                    continue
+                elif line.startswith(engine_chars):
+                    if resp and add_entry is not None:
+                        add_entry(last, resp)
+                        del resp[:]
+                    last = line[1:].strip()
+                    add_entry = engine_map[line[0]]
+                else:
+                    if not line[-1] == '\\':
+                        new_multiline = False
+                    else:
+                        stripped = line.rstrip('\\')
+                        count = len(line) - len(stripped)
+                        new_multiline = count & 1
+                        line = stripped + '\\' * (count // 2)
+                    if multiline:
+                        resp[-1] += line
+                    else:
+                        add_resp(line)
+                    multiline = new_multiline
+            if resp and add_entry is not None:
+                add_entry(last, resp)
+
     remacro = re.compile(r'{([^{}]+)}')
     refunc  = re.compile(r'(.*?)\((.*?)\)')
     
@@ -120,7 +164,7 @@ class HAL(object):
             if response: # Sanity checks here
                 question = response
         
-        combo = ComboEngine(self.regex, self.general, self.matrix, self.oneword, self.generic)
+        combo = ComboEngine(self.regex, self.general, self.matrix, self.generic)
         response = combo.final(question)
         
         try:

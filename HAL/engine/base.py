@@ -28,6 +28,11 @@ class BaseEngine(object):
     def load(self, file):
         """loads file as a string or a file like object into the engine"""
         pass
+
+    @abstractmethod
+    def add_entry(self, line, resp):
+        """Adds entries that gets selected if the engine decides line matches the input"""
+        pass
     
     @abstractmethod
     def output(self, input, context=None):

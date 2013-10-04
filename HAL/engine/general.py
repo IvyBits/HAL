@@ -62,6 +62,7 @@ class GeneralEngine(BaseEngine):
         else:
             self._loaded_from_file = True
         self.db_lock = Lock()
+        self._cursor = self.db.cursor()
     
     @property
     def loaded_from_file(self):
@@ -72,6 +73,19 @@ class GeneralEngine(BaseEngine):
     
     def __del__(self):
         self.close()
+
+    def add_entry(self, last, resp, formjoin='\f'.join):
+        c = self._cursor
+        index = strip_clean(last).lower()
+        try:
+            c.execute('INSERT INTO haldata (resp, data) VALUES (?, ?)', (formjoin(resp), index))
+        except sqlite3.IntegrityError:
+            # Duplicate index
+            id, resp_ = c.execute('SELECT id, resp FROM haldata WHERE data = ?', (index,)).fetchall()[0]
+            resp = '%s\f%s' % (resp_, formjoin(resp))
+            c.execute('UPDATE haldata SET resp = ? WHERE id = ?', (resp, id))
+        else:
+            c.execute('INSERT INTO halindex(docid, data) VALUES (?, ?)', (c.lastrowid, index))
 
     def load(self, file):
         if isinstance(file, basestring):

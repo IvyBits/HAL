@@ -43,6 +43,7 @@ class RegexEngine(BaseEngine):
             self._loaded_from_file = True
         self.db.create_function('REGEXP', 2, self.regexp)
         self.db_lock = Lock()
+        self._cursor = self.db.cursor()
 
     @property
     def loaded_from_file(self):
@@ -53,7 +54,25 @@ class RegexEngine(BaseEngine):
     
     def __del__(self):
         self.close()
-    
+
+    def add_entry(self, last, resp):
+        c = self._cursor
+        try:
+            regex = re.compile(last, re.I)
+        except re.error:
+            print >>sys.stderr, 'Error on:', last
+        except OverflowError:
+            print >>sys.stderr, 'Overflow on:', last
+        else:
+            try:
+                c.execute('INSERT INTO haldata (resp, regex) VALUES (?, ?)', ('\f'.join(resp), last))
+            except sqlite3.IntegrityError:
+                rowid, resp_ = c.execute('SELECT rowid, resp FROM haldata WHERE regex = ?', (last,)).fetchall()[0]
+                resp = resp_ + '\f' + '\f'.join(resp)
+                c.execute('UPDATE haldata SET resp = ? WHERE rowid = ?', (resp, rowid))
+            else:
+                self.regex[last] = regex
+
     def load(self, file):
         if isinstance(file, basestring):
             file = closing(StringIO(file))

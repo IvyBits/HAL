@@ -64,7 +64,9 @@ class Application(tk.Frame):
         loadfiles('*.gen', 'matrix', 'Matrix')
         loadfiles('*.mtx', 'general', 'General')
         loadfiles('*.rgx', 'regex', 'Regex')
-        loadfiles('*.ow',  'oneword', 'One Word')
+        for file in glob(os.path.join(dir, '*.xail')):
+            write('Loading %s' % file)
+            self.hal.feed(io.open(file, encoding='utf-8'))
         write('\n')
 
         user = getuser()
