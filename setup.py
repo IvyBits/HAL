@@ -14,7 +14,7 @@ setup(name='HAL',
       author_email='xiaomao5@live.com',
       url='http://dev.ivybits.tk/projects/hal',
       packages=find_packages(),
-      install_requires=['stemming'],
+      install_requires=['stemming', 'beautifulsoup4'],
       entry_points={
         'console_scripts': [
             'hal = HAL.mainentry:main',
