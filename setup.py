@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import ez_setup
 ez_setup.use_setuptools()
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open('README.rst') as file:
     long_description = file.read()
@@ -12,8 +12,8 @@ setup(name='HAL',
       long_description=long_description,
       author='Xiaomao Chen',
       author_email='xiaomao5@live.com',
-      url='http://www.halbot.co.cc/',
-      packages=['HAL', 'HAL.engine'],
+      url='http://dev.ivybits.tk/projects/hal',
+      packages=find_packages(),
       install_requires=['stemming'],
       entry_points={
         'console_scripts': [

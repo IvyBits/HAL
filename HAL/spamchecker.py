@@ -1,5 +1,5 @@
 import re
-from HAL.stringutils import strip_clean
+from xail.stringutils import strip_clean
 from functools import partial
 from operator import contains
 

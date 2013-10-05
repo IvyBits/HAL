@@ -1,11 +1,7 @@
-from contextlib import closing
-from io import StringIO
 import logging
-import random
 import re
-from operator import itemgetter
 
-from HAL.engine import *
+from xail import XAIL
 from HAL.context import default as default_context
 from HAL.middlewares import SpamFilter, WikiWare
 from HAL.version import version as HALversion
@@ -19,86 +15,16 @@ logger = logging.getLogger('HAL')
 DEBUG_MODE = False
 
 
-class ComboEngine(object):
-    """Engine to merge outputs of others"""
-    
-    def __init__(self, *args):
-        self.engines = args
-
-    def output(self, input):
-        out = []
-        for engine in self.engines:
-            o = engine.output(input)
-            if o is not None:
-                out.extend(o)
-        out.sort(key=itemgetter(1), reverse=True)
-        return out
-
-    def final(self, input):
-        data = self.output(input)
-        if not data:
-            return None
-        if DEBUG_MODE:
-            for content, probility in data:
-                print '%.6f: %s' % (probility, content)
-        kazi = max(map(itemgetter(1), data))
-        data = [x for x in data if x[1] == kazi]
-        return random.choice(data)[0]
-
-
 class HAL(object):
     version = HALversion
+
     def __init__(self):
-        self.regex   = RegexEngine()
-        self.general = GeneralEngine()
-        self.matrix  = MatrixEngine()
-        self.generic = GenericEngine()
-        self.enginemap = {'#': self.matrix.add_entry,
-                          '@': self.general.add_entry,
-                          '!': self.regex.add_entry}
-        
         self.middleware = [WikiWare(), SpamFilter()]
         self.globals = default_context.copy()
+        self.xail = XAIL()
 
-    def feed(self, file):
-        if isinstance(file, basestring):
-            file = closing(StringIO(file))
-        engine_map = self.enginemap
-        engine_chars = tuple(engine_map.keys())
-        resp = []
-        last = ''
-        add_entry = None
-        multiline = False
-        add_resp = resp.append
-
-        with file as file:
-            for line in file:
-                line = line.strip()
-                if not line:
-                    continue
-                elif line[0] == ';':
-                    continue
-                elif line.startswith(engine_chars):
-                    if resp and add_entry is not None:
-                        add_entry(last, resp)
-                        del resp[:]
-                    last = line[1:].strip()
-                    add_entry = engine_map[line[0]]
-                else:
-                    if not line[-1] == '\\':
-                        new_multiline = False
-                    else:
-                        stripped = line.rstrip('\\')
-                        count = len(line) - len(stripped)
-                        new_multiline = count & 1
-                        line = stripped + '\\' * (count // 2)
-                    if multiline:
-                        resp[-1] += line
-                    else:
-                        add_resp(line)
-                    multiline = new_multiline
-            if resp and add_entry is not None:
-                add_entry(last, resp)
+    def feed(self, *args, **kwargs):
+        return self.xail.feed(*args, **kwargs)
 
     remacro = re.compile(r'{([^{}]+)}')
     refunc  = re.compile(r'(.*?)\((.*?)\)')
@@ -161,11 +87,10 @@ class HAL(object):
             if response:
                 return response
             response = middleware.filter(question)
-            if response: # Sanity checks here
+            if response:  # Sanity checks here
                 question = response
-        
-        combo = ComboEngine(self.regex, self.general, self.matrix, self.generic)
-        response = combo.final(question)
+
+        response = self.xail.final(question)
         
         try:
             response = self._subst(response, context=context)
@@ -174,7 +99,7 @@ class HAL(object):
 
         for middleware in reversed(self.middleware):
             result = middleware.output(response)
-            if result: # Prevent a bad middleware from eating everything
+            if result:  # Prevent a bad middleware from eating everything
                 response = result
         
         if response.startswith('>'):

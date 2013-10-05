@@ -8,7 +8,7 @@ import io
 
 from HAL import HAL
 
-# Windows doesn't have readline, but it's usefule on linux,
+# Windows doesn't have readline, but it's useful on linux,
 # as the console doesn't do editing like windows
 try:
     import readline
@@ -41,11 +41,11 @@ def main():
     hal = HAL()
 
     def loadengine(pattern, name):
-        engine = getattr(hal, name)
+        engine = getattr(hal.xail, name)
         for file in glob(os.path.join(dir, pattern)):
             logger.info('%s Engine: Loading %s', name, file)
             engine.load(io.open(file, encoding='utf-8'))
-    loadengine('*.gen', 'general')
+    loadengine('*.gen', 'substr')
     loadengine('*.mtx', 'matrix')
     loadengine('*.rgx', 'regex')
 
