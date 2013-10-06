@@ -29,8 +29,8 @@ def main():
     except ValueError:
         pass
     else:
-        from HAL import main as _main
-        _main.DEBUG_MODE = True
+        from xail import main
+        main.DEBUG_MODE = True
         logger.warning('Using debug mode!')
 
     try:
