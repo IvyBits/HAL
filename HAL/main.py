@@ -5,6 +5,7 @@ from xail import XAIL
 from HAL.context import default as default_context
 from HAL.middlewares import SpamFilter, WikiWare
 from HAL.version import version as HALversion
+from HAL.middlewares.wikipedia import set_agent
 
 try:
     from itertools import imap as map

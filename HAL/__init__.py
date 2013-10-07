@@ -1,1 +1,1 @@
-from HAL.main import HAL
+from HAL.main import HAL, set_agent

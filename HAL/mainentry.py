@@ -6,7 +6,7 @@ import logging
 import sys, os
 import io
 
-from HAL import HAL
+from HAL import HAL, set_agent
 
 # Windows doesn't have readline, but it's useful on linux,
 # as the console doesn't do editing like windows
@@ -22,7 +22,8 @@ def main():
     logging.basicConfig()
     logging.getLogger().setLevel(logging.INFO)
     # Using the correct encoding when printing
-    sys.stdout = codecs.getwriter('mbcs' if os.name == 'nt' else 'utf-8')(sys.stdout, 'replace')
+    sys.stdout = codecs.getwriter('mbcs' if os.name == 'nt' and sys.stdout.isatty() else 'utf-8')(sys.stdout, 'replace')
+    set_agent('(PrivateChatSession; http://dev.ivybits.tk/projects/hal/)')
 
     try:
         sys.argv.remove('-d')

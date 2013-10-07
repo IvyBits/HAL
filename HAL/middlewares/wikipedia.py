@@ -27,7 +27,7 @@ resentence = re.compile(r'''# Match a sentence ending in punctuation or EOS.
                             )*           # Zero or more (special normal*)
                             [.!?]?       # Optional ending punctuation.
                             ['"]?       # Optional closing quote.
-                            (?=\s|$)''', re.X|re.M)
+                            (?=\s|$)''', re.X | re.M)
 rebracket = re.compile(r'\s*\([^()]*\)\s*')
 respacepunc = re.compile(r'''\s+(?=[,.;:?!])''')
 redisambig = re.compile(r'may(?:\dalso)?\drefer')
@@ -35,7 +35,10 @@ _superscript = u'⁰¹²³⁴⁵⁶⁷⁸⁹'
 _normal = u'0123456789'
 _subscript = u'₀₁₂₃₄₅₆₇₈₉'
 headers = {'User-Agent': 'HAL/%s' % version}
-blacklist = tuple('my your his our thy thine their'.split()) # these sound like smalltalk
+
+
+def set_agent(agent):
+    headers['User-Agent'] = 'HAL/%s %s' % (version, agent)
 
 
 def superscript_int(str):
@@ -53,6 +56,7 @@ def subscript_int(str):
 class WikiParser(object):
     def __init__(self, text):
         self.soup = BeautifulSoup(text)
+        self.disambiguation = self.soup.find('table', id='disambigbox') is not None
 
     def remove(self, *args, **kwargs):
         for tag in self.soup.find_all(*args, **kwargs):
@@ -62,10 +66,6 @@ class WikiParser(object):
         for tag in self.soup.find_all(*args, **kwargs):
             if tag.string:
                 tag.string = func(tag.string)
-
-    @property
-    def disambiguation(self):
-        return self.soup.find('table', id='disambigbox') is not None
 
     def clean(self):
         self.remove(text=lambda text: isinstance(text, Comment))
@@ -78,7 +78,6 @@ class WikiParser(object):
         self.remove('table')
         self.remove('span', class_='editsection')
         self.remove('span', class_='mw-editsection')
-        self.remove('span', class_=lambda x: x is not None and 'IPA' in x)
         self.update(lambda x: '\f%s:' % x, 'span', class_='mw-headline')
 
     def split(self):
@@ -95,16 +94,19 @@ class WikiParser(object):
 
 
 def find_article(keyword, api='http://en.wikipedia.org/w/api.php'):
-    query = dict(action='query', list='search', srsearch=keyword, format='json')
+    query = dict(action='query', list='search', srsearch=keyword, format='json', srprop='redirecttitle')
     page = urlopen('%s?%s' % (api, urlencode(query)))
     with closing(page):
         results = json.load(page)
     for result in results['query']['search']:
-        yield result['title']
+        redirect = result.get('redirecttitle', None)
+        if redirect is not None:
+            redirect = redirect['mTextform']
+        yield result['title'], redirect
 
 
 def download_article(name, wiki='http://en.wikipedia.org/w/index.php'):
-    query = dict(title=name, action='render')
+    query = dict(title=name.encode('utf-8'), action='render')
     request = Request('%s?%s' % (wiki, urlencode(query)), headers=headers)
     page = urlopen(request)
     with closing(page):
@@ -132,7 +134,7 @@ def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
     try:
         return cache[lower]
     except KeyError:
-        for article in find_article(keyword):
+        for article, redirect in find_article(keyword):
             article = download_article(article)
             parser = WikiParser(article)
             if parser.disambiguation:
@@ -141,8 +143,9 @@ def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
             parser.parse()
             result = sentences(get_lead(parser))
             match = result.lower()
-            if (not any(stem(word) in match for word in lower.split()) or
-                    'may refer' in match or 'also refer to' in match):
+            has_text = ((redirect is not None and lower in redirect.lower())
+                        or any(stem(word) in match for word in lower.split()))
+            if not has_text or redisambig.search(match) is not None:
                 # none of the keyword was found in the result
                 cache[article.lower()] = None
                 continue
