@@ -1,6 +1,7 @@
 import random
 from HAL import spamchecker
 from HAL.middleware import Middleware
+from HAL.middlewares.wikipedia import requestion
 
 __author__ = 'xiaomao'
 
@@ -19,4 +20,5 @@ class SpamFilter(Middleware):
 
     def input(self, input):
         if spamchecker.SpamCheck(input).check():
-            return random.choice(self.resp)
+            if requestion.search(input) is None:
+                return random.choice(self.resp)
