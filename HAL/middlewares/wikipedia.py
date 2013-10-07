@@ -7,7 +7,7 @@ from urllib import urlencode
 from urllib2 import urlopen, Request
 from contextlib import closing
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from stemming.porter2 import stem
 
 import re
@@ -30,6 +30,7 @@ resentence = re.compile(r'''# Match a sentence ending in punctuation or EOS.
                             (?=\s|$)''', re.X|re.M)
 rebracket = re.compile(r'\s*\([^()]*\)\s*')
 respacepunc = re.compile(r'''\s+(?=[,.;:?!])''')
+redisambig = re.compile(r'may(?:\dalso)?\drefer')
 _superscript = u'⁰¹²³⁴⁵⁶⁷⁸⁹'
 _normal = u'0123456789'
 _subscript = u'₀₁₂₃₄₅₆₇₈₉'
@@ -62,7 +63,12 @@ class WikiParser(object):
             if tag.string:
                 tag.string = func(tag.string)
 
+    @property
+    def disambiguation(self):
+        return self.soup.find('table', id='disambigbox') is not None
+
     def clean(self):
+        self.remove(text=lambda text: isinstance(text, Comment))
         self.remove('sup', class_='reference')
         self.remove('sup', class_='Template-Fact')
         self.update(superscript_int, 'sup')
@@ -89,28 +95,12 @@ class WikiParser(object):
 
 
 def find_article(keyword, api='http://en.wikipedia.org/w/api.php'):
-    query = dict(action='query', list='search', srsearch=keyword, srprop='wordcount', format='json')
+    query = dict(action='query', list='search', srsearch=keyword, format='json')
     page = urlopen('%s?%s' % (api, urlencode(query)))
     with closing(page):
         results = json.load(page)
     for result in results['query']['search']:
-        yield result['title'], result['wordcount']
-
-
-def get_best_article(articles):
-    """Gets the most suitable article. Most of the time the first one works.
-
-    However, sometimes the first one is disambiguation, so if it's 10x shorter than
-    the second or more, the second is returned."""
-    if len(articles) == 0:
-        return
-    elif len(articles) == 1:
-        return articles[0][0]
-    else:
-        if articles[0][1] * 10 < articles[1][1]:
-            return articles[1][0]
-        else:
-            return articles[0][0]
+        yield result['title']
 
 
 def download_article(name, wiki='http://en.wikipedia.org/w/index.php'):
@@ -122,9 +112,7 @@ def download_article(name, wiki='http://en.wikipedia.org/w/index.php'):
     return article
 
 
-def get_lead(article):
-    parser = WikiParser(article)
-    parser.parse()
+def get_lead(parser):
     text = parser.sections[0]
     while True:
         newtext = rebracket.sub(' ', text)
@@ -144,20 +132,25 @@ def get_wikipedia(keyword, cache=LimitedSizeDict(size_limit=4096)):
     try:
         return cache[lower]
     except KeyError:
-        articles = list(find_article(keyword))
-        article = get_best_article(articles)
-        if article is None:
-            cache[lower] = None
-            return
-        article = download_article(article)
-        result = sentences(get_lead(article))
-        match = result.lower()
-        if not any(stem(word) in match for word in lower.split()):
-            # none of the keyword was found in the result
-            cache[lower] = None
-            return
-        cache[lower] = result
-        return result
+        for article in find_article(keyword):
+            article = download_article(article)
+            parser = WikiParser(article)
+            if parser.disambiguation:
+                cache[article.lower()] = None
+                continue
+            parser.parse()
+            result = sentences(get_lead(parser))
+            match = result.lower()
+            if (not any(stem(word) in match for word in lower.split()) or
+                    'may refer' in match or 'also refer to' in match):
+                # none of the keyword was found in the result
+                cache[article.lower()] = None
+                continue
+            cache[lower] = result
+            cache[article.lower()] = result
+            return result
+        cache[lower] = None
+        return
 
 
 class WikiWare(Middleware):
@@ -176,7 +169,6 @@ if __name__ == '__main__':
         while True:
             keyword = raw_input('--> ')
             articles = list(find_article(keyword))
-            article = get_best_article(articles)
             print 'Chosen:', article
             article = download_article(article)
             print sentences(get_lead(article))
