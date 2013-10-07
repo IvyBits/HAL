@@ -1,13 +1,17 @@
+from __future__ import division
+
 import re
 from xail.stringutils import strip_clean
 from functools import partial
 from operator import contains
+from string import ascii_uppercase, ascii_letters
 
 vowels = 'aeiouy'
 consonants = 'bcdfghjklmnpqrstvwxz'
 proper_letters = 'abcdefghijklmnopqrstuvwxyz '
 rerepeat = re.compile(r'(.)\1\1')
 rerepeatl = re.compile(r'\b(..+)\s*\1\b')
+recapword = re.compile(r'\b[A-Z]+?\b')
 
 long_exception = ('pneumonoultramicroscopicsilicovolcanoconiosis',
                   'supercalifragilisticexpialidocious',
@@ -19,7 +23,7 @@ long_exception = ('pneumonoultramicroscopicsilicovolcanoconiosis',
 impossibles = 'df bf kf gf jk kj sj fj gj hj lj sl'.split()
 digraphs = {'th': 't', 'ng': 'n', 'sh': 's', 'ch': 'c', 'dj': 'j',
             'sch': 's', 'tsch': 'c'} # some common digraphs
-acronyms = '''adsl bc bcc blt bmp btw cc cc ccd cd cdfs cdn cdr cdrw cms cpc cpl cpm
+acronyms = '''adsl bc bcc blt bmp btw cc ccd cd cdfs cdn cdr cdrw cms cpc cpl cpm
               cps crm crt css cst ctp ctr dbms ddl ddr ddr ddr dfs dhcp dlc dll dns
               drm dsl dslam dst dtd dv dvd dvdr dvdram dvdrw dvr fdr fm fsb ftp gbps gps
               hdd hdtv hdv hfs hsf html http https ieee jfk jfs jsf jsp jv kbps kvm lcd
@@ -27,6 +31,7 @@ acronyms = '''adsl bc bcc blt bmp btw cc cc ccd cd cdfs cdn cdr cdrw cms cpc cpl
               pdf php pm png pp ppc ppl ppm ppp pppoe pps pptp ps ps rdf rgb rpc rpm rss
               rtf sd sdk sdsl sla sli smb smm sms smtp snmp sql srgb ssd ssh ssl tft ttl
               vdsl vlb vpn vrml wc wddm www xhtml xml xmp xslt'''.split()
+
 
 class SpamCheck(object):
     def __init__(self, text):
@@ -40,8 +45,13 @@ class SpamCheck(object):
         for word in self.words[:]:
             if word in acronyms:
                 self.text = re.sub(re.escape(word), '', self.text, flags=re.I)
-                self.words.remove(word)
+        caps_count = len([None for i in self.text if i in ascii_uppercase])
+        letter_count = len([None for i in self.text if i in ascii_letters])
+        if letter_count != 0 and caps_count / letter_count < .5:
+            # Doesn't look like all caps spam.
+            self.text = recapword.sub('', self.text)
         self.lower = self.text.lower()
+        self.words = strip_clean(self.lower, proper_letters).split()
 
     def length_check(self):
         """\
