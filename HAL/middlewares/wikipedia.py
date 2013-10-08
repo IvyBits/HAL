@@ -162,6 +162,11 @@ class WikiWare(Middleware):
 
     # Input handler was removed so better response cen be used by the engine
     # However, the [wiki:article] syntax can be used
+    def wiki_macro(self, keyword):
+        return get_wikipedia(keyword) or "I don't know what that means."
+
+    def get_macros(self):
+        return {'wiki': self.wiki_macro}
 
     def output(self, result):
         return rewikisub.sub(lambda match: get_wikipedia(match.group(1)) or

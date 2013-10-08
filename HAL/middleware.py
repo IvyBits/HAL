@@ -3,6 +3,7 @@ from abc import ABCMeta
 
 class Middleware(object):
     __metaclass__ = ABCMeta
+
     def input(self, input):
         """Return something true and it's the response"""
         return None
@@ -14,3 +15,6 @@ class Middleware(object):
     def output(self, result):
         """Post process the result"""
         return result
+
+    def get_macros(self):
+        return {}

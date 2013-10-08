@@ -3,7 +3,7 @@ import re
 
 from xail import XAIL
 from HAL.context import default as default_context
-from HAL.middlewares import SpamFilter, WikiWare
+from HAL.middlewares import SpamFilter, WikiWare, DateTimeWare
 from HAL.version import version as HALversion
 from HAL.middlewares.wikipedia import set_agent
 
@@ -20,9 +20,16 @@ class HAL(object):
     version = HALversion
 
     def __init__(self):
-        self.middleware = [WikiWare(), SpamFilter()]
+        self.middleware = [WikiWare(), SpamFilter(), DateTimeWare()]
         self.globals = default_context.copy()
         self.xail = XAIL()
+        self.load_middleware_macros()
+
+    def load_middleware_macros(self):
+        for middleware in self.middleware:
+            macros = middleware.get_macros()
+            if isinstance(macros, dict):
+                self.globals.update(macros)
 
     def feed(self, *args, **kwargs):
         return self.xail.feed(*args, **kwargs)
