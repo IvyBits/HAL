@@ -7,6 +7,7 @@ import sys, os, io
 from glob import glob
 from getpass import getuser
 from Queue import Queue, Empty
+from time import time, clock
 
 
 class Application(tk.Frame):
@@ -45,6 +46,8 @@ class Application(tk.Frame):
         from HAL import HAL
 
         write = self.write
+        timer = self.timer = clock if os.name == 'nt' else time
+        begin = timer()
         
         write('Initializing Engine...')
         self.hal = HAL()
@@ -55,18 +58,25 @@ class Application(tk.Frame):
         except IndexError:
             dirname = os.getcwd()
 
+        # Here's the legacy loading
         def loadfiles(pattern, attr, name):
-            engine = getattr(self.hal, attr)
+            engine = getattr(self.hal.xail, attr)
             for file in glob(os.path.join(dirname, pattern)):
                 write('%s Engine: Loading %s...' % (name, file))
                 engine.load(io.open(file, encoding='utf-8'))
                 write(' Done\n')
         loadfiles('*.gen', 'matrix', 'Matrix')
-        loadfiles('*.mtx', 'general', 'General')
+        loadfiles('*.mtx', 'substr', 'Substring')
         loadfiles('*.rgx', 'regex', 'Regex')
-        for file in glob(os.path.join(dir, '*.xail')):
-            write('Loading %s' % file)
+        
+        # New unified XAIL loading
+        files = glob(os.path.join(dirname, '*.xail'))
+        max_length = max(map(len, files))
+        for file in files:
+            write('Loading %s' % file + ' ' * (max_length - len(file)) + '...')
+            start = timer()
             self.hal.feed(io.open(file, encoding='utf-8'))
+            write(' Finished in %8.2f ms\n' % ((timer() - start) * 1000))
         write('\n')
 
         user = getuser()
@@ -78,6 +88,7 @@ class Application(tk.Frame):
         self.prompt, self.halpro = prompt, halpro
         self.context = {'USERNAME': user}
 
+        write('Loaded in %.2f seconds.\n\n' % (timer() - begin))
         write(halpro + 'Hello %s. I am HAL %s.' % (user, self.hal.version) + '\n\n')
 
         self.entry.bind('<Return>', self.answer)
