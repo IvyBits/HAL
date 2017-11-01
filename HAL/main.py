@@ -72,6 +72,7 @@ class HAL(object):
                 try:
                     out = func(*args)
                 except Exception as e:
+                    logger.exception('Function %s failed when substituting', name)
                     raise ValueError('Function {0} returned: {1}'.format(name, e))
             else:
                 try:
@@ -102,8 +103,8 @@ class HAL(object):
         
         try:
             response = self._subst(response, context=context)
-        except ValueError as e:
-            logger.error('Fail to substitute: %s in string %s', e, response)
+        except ValueError:
+            logger.exception('Fail to substitute in string: %s', response)
 
         for middleware in reversed(self.middleware):
             result = middleware.output(response)
